@@ -52,7 +52,9 @@ export const executeWorkflow = inngest.createFunction(
       record.history.push({ nodeId: currentId, prompt: node.data.prompt, answer });
       executionStore.set(runId, record);
 
-      const nextEdge = edges.find((e) => e.source === currentId && e.data?.label === answer);
+      const nextEdge: FlowEdge | undefined = edges.find(
+        (e: FlowEdge) => e.source === currentId && e.data?.label === answer
+      );
       currentId = nextEdge ? nextEdge.target : null;
     }
 
