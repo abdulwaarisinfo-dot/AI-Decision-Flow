@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import { openai } from "@/lib/openai";
+import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic";
 import { executionStore } from "@/lib/executionStore";
 
 type FlowNode = { id: string; data: { prompt: string } };
@@ -32,20 +32,19 @@ export const executeWorkflow = inngest.createFunction(
       // Each node is its own Inngest step — durable, retried independently,
       // and visible as a separate step in the Inngest dev server UI.
       const answer: "YES" | "NO" = await step.run(`decide-${currentId}`, async () => {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a strict binary classifier. Reply with exactly one word: YES or NO. No punctuation, no explanation, nothing else.",
-            },
-            { role: "user", content: node.data.prompt },
-          ],
-          max_tokens: 3,
-          temperature: 0,
+        const response = await anthropic.messages.create({
+          model: CLAUDE_MODEL,
+          max_tokens: 5,
+          system:
+            "You are a strict binary classifier. Reply with exactly one word: YES or NO. No punctuation, no explanation, nothing else.",
+          messages: [{ role: "user", content: node.data.prompt }],
         });
-        const raw = completion.choices[0]?.message?.content?.trim().toUpperCase() ?? "NO";
+        const raw = response.content
+          .filter((b) => b.type === "text")
+          .map((b: any) => b.text)
+          .join("")
+          .trim()
+          .toUpperCase();
         return raw.includes("YES") ? "YES" : "NO";
       });
 
